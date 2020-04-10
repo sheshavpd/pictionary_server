@@ -4,5 +4,4 @@ const EVENT_TYPES = {
     BROADCAST:2,
     GROUP_BROADCAST:3,
 };
-
 module.exports = EVENT_TYPES;

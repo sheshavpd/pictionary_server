@@ -27,6 +27,10 @@ const joinToRoom = async function (req, res, userData) {
         res.status(HTTPStatusCodes.BAD_REQUEST).json({error: true, message: "No game exists with that id."});
         return;
     }
+    if (gameRoom.players.length >= 8) {
+        res.status(HTTPStatusCodes.FORBIDDEN).json({error: true, message: "Game room full (8 players max)."});
+        return;
+    }
     gameRoom.players.unshift({sessionID: currentSessionID, uid: req.decoded.uid});
     try {
         await gameRoom.save();
@@ -47,7 +51,7 @@ const joinToRoom = async function (req, res, userData) {
     }
     notifyUserJoin(gameRoom, req.decoded.uid);
     const gameState = await getGameState(game, gameRoom);
-    return {gameRoomID: gameRoom._id, ...gameState};
+    return {gameRoomID: gameRoom._id, audio: gameRoom.audio, ...gameState};
 };
 
 const notifyUserJoin = async function (gameRoom, uid) {

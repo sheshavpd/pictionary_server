@@ -25,7 +25,8 @@ const newPrivateRoom = async function(req, res, userData) {
             hostUID: req.decoded.uid,
             type: ROOM_TYPE.PRIVATE,
             players: [{sessionID: currentSessionID, uid: req.decoded.uid}],
-            roomID: await getValidRoomUID()
+            roomID: await getValidRoomUID(),
+            audio: req.body.audio && req.body.audio === "true" //If audio is present (and not false), it's true. else, false.
         });
         await gameRoom.save();
         userData.currentGames.push(gameRoom._id);

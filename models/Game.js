@@ -9,6 +9,8 @@ const GAME_STATE = {
 };
 
 const GAME_EVENTS = {
+    STROKE: 101, //let this be integer, since a lot of events happen, and comparision needs to take place.
+    CLEAR_BOARD: "CLEAR_BOARD",
     CHOOSING_STARTED: "CHOOSING_STARTED",
     DRAWING_STARTED: "DRAWING_STARTED",
     GAME_ENDED: "GAME_ENDED",

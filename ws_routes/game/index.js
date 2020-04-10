@@ -45,7 +45,7 @@ const getGameState = async function (game, gameRoom) {
     return gameState;
 };
 
-const NEW_GAME_TIMEOUT = 30000;
+const NEW_GAME_TIMEOUT = 20000;
 const endGame = async function (game, gameRoom) {
     if (!game || !gameRoom)
         return;
@@ -75,15 +75,15 @@ const onUserLeftGame = async function (uid, gameID) {
         if (game.state === GAME_STATE.CHOOSING)
             await startChoosing(gameID);
         else if (game.state === GAME_STATE.DRAWING)
-            await onDrawingCompleted(gameID);
+            await onDrawingCompleted(gameID, null, true);
     }
 };
 
-const onDrawingCompleted = async function (gameUID, stateID) {
+const onDrawingCompleted = async function (gameUID, stateID, skipStateCheck) {
     const game = await Game.findOne({_id: gameUID});
     if (!game) return;
     //If this function depends on stateID which means, it might be called by timeout, then action must be taken only if state id matches.
-    if (stateID && game.stateID !== stateID)
+    if (stateID && (game.stateID !== stateID || skipStateCheck)) //State check can be skipped when artist leaves game.
         return;
     const gameRoom = await GameRoom.findOne({_id: game.roomUID});
     if (!gameRoom) return;
@@ -160,7 +160,7 @@ const guessWord = async function (locksArr, stateID, gameUID, {sessionID, uid, w
     await gameRoom.save();
     await game.save();
     //If all the players have guessed, the number of keys in guessed object should be totalPlayers - 1. The rest 1 is the artist.
-    const allPlayersGuessed = gameRoom.players.filter((player) => guessers[player.uid]).length === 1;
+    const allPlayersGuessed = gameRoom.players.filter((player) => guessers[player.uid]).length === gameRoom.players.length - 1;
     if (allPlayersGuessed) {
         //Schedule when free, because this might prevent from releasing acquired locks.
         setTimeout(async ()=>await onDrawingCompleted(game._id), 0);
@@ -255,7 +255,7 @@ const doneChoosing = async function (game) {
 };
 
 const CHOOSE_TIMEOUT = 10000;//10000; //10 seconds
-const DRAW_TIMEOUT = 20000;//60000; //60 seconds
+const DRAW_TIMEOUT = 60000;//60000; //60 seconds
 const startChoosing = async function (gameID) {
     const game = await Game.findOne({_id: gameID, state: {$ne: GAME_STATE.ENDED}});
     const gameRoom = await GameRoom.findOne({_id: game.roomUID});
@@ -287,7 +287,7 @@ const startChoosing = async function (gameID) {
     }
 };
 
-const MAX_ROUNDS = 1;
+const MAX_ROUNDS = 3;
 const startNewRound = async function (roomUID) {
     const gameRoom = await GameRoom.findOne({_id: roomUID});
     let game = await Game.findOne({roomUID, state: {$ne: GAME_STATE.ENDED}});

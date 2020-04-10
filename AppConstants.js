@@ -9,7 +9,8 @@ const HTTPStatusCodes = {
     BAD_REQUEST: 400,
     OK : 200,
     UNAUTHORIZED: 401,
-    INTERNAL_SV_ERROR: 500
+    INTERNAL_SV_ERROR: 500,
+    FORBIDDEN: 403
 };
 
 module.exports = {

@@ -4,8 +4,9 @@ const redis_publisher = require('../credentials/redis_publisher');
 const redisClient = require('../credentials/redis_client');
 const exitCurrentGameRooms = require('./game/exitCurrentGames');
 const {hmsetAsync, hmgetAsync, hdelAsync} = require('../credentials/redis_async');
-const {chosenWordMsg, guessedWordMsg, exitGameMsg} = require('./game/gameIncoming');
+const {strokeMsg, chosenWordMsg, guessedWordMsg, exitGameMsg, clearBoardMsg} = require('./game/gameIncoming');
 const {GAME_EVENTS} = require('../models/Game');
+const WebRTCEventTypes = require('../pojo/WebRTCEventTypes');
 
 const WS_CHANNEL = "ws_channel";
 
@@ -46,17 +47,36 @@ class WSWrapper {
         ws.on('message', (msg) => {
             try {
                 let m = JSON.parse(msg);
-                if (!m.payload) return;
-                switch (m.type) {
-                    case GAME_EVENTS.GUESS_SUBMIT:
-                        guessedWordMsg(decoded, m.payload);
-                        break;
-                    case GAME_EVENTS.WORD_CHOSEN:
-                        chosenWordMsg(decoded, m.payload);
-                        break;
-                    case GAME_EVENTS.USER_LEFT:
-                        exitGameMsg(decoded, m.payload);
-                        break;
+                if (m.payload) {
+                    switch (m.type) {
+                        case GAME_EVENTS.STROKE:
+                            strokeMsg(decoded, m.payload);
+                            break;
+                        case GAME_EVENTS.CLEAR_BOARD:
+                            clearBoardMsg(decoded, m.payload);
+                            break;
+                        case GAME_EVENTS.GUESS_SUBMIT:
+                            guessedWordMsg(decoded, m.payload);
+                            break;
+                        case GAME_EVENTS.WORD_CHOSEN:
+                            chosenWordMsg(decoded, m.payload);
+                            break;
+                        case GAME_EVENTS.USER_LEFT:
+                            exitGameMsg(decoded, m.payload);
+                            break;
+                    }
+                } else { //if message doesn't contain payload.
+                    switch(m.type) {
+                        case WebRTCEventTypes.OFFER:
+                            this.sendMSGToUID(m.uid, {...m, uid: decoded.uid});
+                            break;
+                        case WebRTCEventTypes.ANSWER:
+                            this.sendMSGToUID(m.uid, {...m, uid: decoded.uid});
+                            break;
+                        case WebRTCEventTypes.CANDIDATE:
+                            this.sendMSGToUID(m.uid, {...m, uid: decoded.uid});
+                            break;
+                    }
                 }
             } catch (e) {
             }
@@ -79,11 +99,28 @@ class WSWrapper {
         });
     }
 
-    sendMSG(to, payload) {
+    sendMSG(toSessionID, payload) {
         //If destination socketSession exists in local node, send it here. Else, send to other nodes to checkup!
-        if (this.socketSessions[to])
-            this.socketSessions[to].socket.send(JSON.stringify(payload));
-        else redis_publisher.publish(WS_CHANNEL, JSON.stringify({type: WS_MSG_TYPES.UNICAST, to, payload}));
+        if (this.socketSessions[toSessionID])
+            this.socketSessions[toSessionID].socket.send(JSON.stringify(payload));
+        else redis_publisher.publish(WS_CHANNEL, JSON.stringify({type: WS_MSG_TYPES.UNICAST, toSessionID, payload}));
+    }
+
+    async sendMSGToUID(uid, payload) {
+        try {
+            const existingSessionIDs = await hmgetAsync(redisClient)('sessions', uid);
+            existingSessionIDs.forEach(existingSessionID => {
+                if (existingSessionID !== null) {
+                    //If destination socketSession exists in local node, send it here. Else, send to other nodes to checkup!
+                    if (this.socketSessions[existingSessionID])
+                        this.socketSessions[existingSessionID].socket.send(JSON.stringify(payload));
+                    else redis_publisher.publish(WS_CHANNEL, JSON.stringify({type: WS_MSG_TYPES.UNICAST, existingSessionID, payload}));
+                }
+            });
+        } catch (e) {
+            console.log(e);
+        }
+
     }
 
     broadcast(payload) {

@@ -1,5 +1,4 @@
 const routes = require('express').Router();
-const users = require('./users');
 const game = require('./game');
 const auth = require('./auth');
 const {TOKEN_SECRET, HTTPStatusCodes}=require('../AppConstants');
@@ -61,7 +60,6 @@ routes.use(function(req, res, next) {
         });
     }
 });
-routes.use('/users', users);
 routes.use('/game', game);
 
 routes.get('/', (req, res) => {

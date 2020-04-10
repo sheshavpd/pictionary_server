@@ -20,6 +20,7 @@ const gameRoomSchema = new Schema({
     hostUID: {type: String},
     type: {type: Number, required: true},
     roomID: {type: String, required: true},
+    audio: {type: Boolean, default: false},
     players: [playerSchema],
     cGame: {type: String}, //currentGame
     time: {type: Date}

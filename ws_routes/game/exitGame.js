@@ -20,7 +20,7 @@ const exitGame = async function({gameRoomID, userID, gameRoom, user}) {
         if(gameRoomData.cGame && gameRoomData.players.length <= 1) {
             endGame(await Game.findOne({_id: gameRoomData.cGame}), gameRoomData);
         } else if(gameRoomData.cGame) {
-            onUserLeftGame(gameRoomData.cGame); //Check if the user is an artist, and make some actions based on 'user-left'.
+            onUserLeftGame(userID, gameRoomData.cGame); //Check if the user is an artist, and make some actions based on 'user-left'.
         }
         // Import wsWrapper here, because it might create circular dependency.
         // exitCurrentGames -> exitGame -> wsWrapper -> exitCurrentGames.
