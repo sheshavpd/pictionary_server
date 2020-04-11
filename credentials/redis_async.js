@@ -4,11 +4,13 @@ const setAsync = client => promisify(client.set.bind(client));
 const hmsetAsync = client => promisify(client.hmset.bind(client));
 const hmgetAsync = client => promisify(client.hmget.bind(client));
 const hdelAsync = client => promisify(client.hdel.bind(client));
+const setexAsync = client => promisify(client.setex.bind(client));
 
 module.exports = {
     getAsync,
     setAsync,
     hmsetAsync,
     hmgetAsync,
-    hdelAsync
+    hdelAsync,
+    setexAsync
 };

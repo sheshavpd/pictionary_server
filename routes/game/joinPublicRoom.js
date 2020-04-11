@@ -6,6 +6,7 @@ const {startGame, getGameState} = require('../../ws_routes/game');
 const {HTTPStatusCodes, MAX_PLAYERS_PER_ROOM} = require('../../AppConstants');
 const redisClient = require('../../credentials/redis_client');
 const {hmgetAsync} = require('../../credentials/redis_async');
+const { tryLock, unlock } = require('../../credentials/redis_lock');
 
 const newPublicRoom = async function(req, res) {
     let gameRoom;
@@ -122,4 +123,21 @@ const joinPublicRoom = async function (req, res) {
     res.status(HTTPStatusCodes.OK).json({error: false, gameDetails});
 };
 
-module.exports = joinPublicRoom;
+const lockedJoinPublicRoom = async function(req, res) {
+    const pubRoomJoinLock = await tryLock("locks:public_room_join");
+    if(!pubRoomJoinLock) {
+        res.status(HTTPStatusCodes.INTERNAL_SV_ERROR).json({
+            error: true,
+            message: "Too many requests. Please try again."
+        });
+        return;
+    }
+    try {
+        await joinPublicRoom(req, res);
+    }catch(e){
+        console.log(e);
+    }
+    await unlock(pubRoomJoinLock);
+};
+
+module.exports = lockedJoinPublicRoom;

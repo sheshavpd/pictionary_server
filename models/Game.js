@@ -33,7 +33,8 @@ const gameSchema = new Schema({
     stateID: {type: String},
     stateData: {type: String},
     cWord: {type: String}, //current word
-    time: {type: Date}
+    time: {type: Date},
+    updateTime: {type: Number}
 });
 gameSchema.index({gameID: 1});
 gameSchema.index({state: 1});
@@ -41,6 +42,7 @@ gameSchema.pre('save', function (next) {
     if (!this.time) {
         this.time = new Date();
     }
+    this.updateTime = Math.round(Date.now()/1000);
     next();
 });
 

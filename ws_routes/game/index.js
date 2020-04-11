@@ -2,6 +2,7 @@ const User = require('../../models/User');
 const {GameRoom} = require('../../models/GameRoom');
 const {tryLock, unlock} = require('../../credentials/redis_lock');
 const {Game, GAME_STATE, GAME_EVENTS} = require('../../models/Game');
+const Word = require('../../models/Word');
 const uuidv4 = require('uuid').v4;
 const stringSimilarity = require('string-similarity');
 
@@ -114,13 +115,13 @@ const onDrawingCompleted = async function (gameUID, stateID, skipStateCheck) {
 };
 
 const guessWord = async function (locksArr, stateID, gameUID, {sessionID, uid, word}) {
-    locksArr.push(await tryLock(gameUID));
+    locksArr.push(await tryLock(`locks:${gameUID}`));
     const game = await Game.findOne({_id: gameUID});
     if (!game || game.stateID !== stateID || game.state !== GAME_STATE.DRAWING || game.artistID === uid) {
         return;
     }
     const wsWrapper = require('../../ws_routes/WSWrapper');
-    locksArr.push(await tryLock(game.roomUID));
+    locksArr.push(await tryLock(`locks:${game.roomUID}`));
     const gameRoom = await GameRoom.findOne({_id: game.roomUID});
     const stateData = JSON.parse(game.stateData);
     const guessers = stateData.guessers || {};
@@ -262,7 +263,7 @@ const startChoosing = async function (gameID) {
     game.state = GAME_STATE.CHOOSING;
     game.stateID = uuidv4();
     game.stateExpiry = Date.now() + CHOOSE_TIMEOUT;
-    const words = ["HELLO WORLD", "BUTTERFLY", "BEAUTIFUL"]; //randomly chosen words
+    const words = await Word.random(3);
     const currentArtist = game.artistID ? getNextArtist(gameRoom, game) : gameRoom.players[0];
     if (currentArtist) {
         game.stateData = JSON.stringify(words);

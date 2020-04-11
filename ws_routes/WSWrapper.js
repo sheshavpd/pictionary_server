@@ -3,7 +3,7 @@ const redis_subscriber = require('../credentials/redis_subscriber');
 const redis_publisher = require('../credentials/redis_publisher');
 const redisClient = require('../credentials/redis_client');
 const exitCurrentGameRooms = require('./game/exitCurrentGames');
-const {hmsetAsync, hmgetAsync, hdelAsync} = require('../credentials/redis_async');
+const {hmsetAsync, hmgetAsync, hdelAsync, setexAsync} = require('../credentials/redis_async');
 const {strokeMsg, chosenWordMsg, guessedWordMsg, exitGameMsg, clearBoardMsg} = require('./game/gameIncoming');
 const {GAME_EVENTS} = require('../models/Game');
 const WebRTCEventTypes = require('../pojo/WebRTCEventTypes');
@@ -12,11 +12,19 @@ const WS_CHANNEL = "ws_channel";
 
 class WSWrapper {
     constructor() {
-        this.socketSessions = [];
+        this.socketSessions = {};
     }
 
     get(sessionID) {
         return this.socketSessions[sessionID];
+    }
+
+    async trackExpiry(sessionID, uid) {
+        try {
+            await setexAsync(redisClient)(sessionID, 120, uid); //expire after 120 seconds.
+        } catch (e) {
+            console.log(e);
+        }
     }
 
     async addSocket(ws, req) {
@@ -38,6 +46,7 @@ class WSWrapper {
         };
         try {
             await hmsetAsync(redisClient)('sessions', {[sessionID]: decoded.uid, [decoded.uid]: sessionID});
+            await this.trackExpiry(sessionID, decoded.uid);
         } catch (e) {
             console.log(e);
             return;
@@ -45,6 +54,10 @@ class WSWrapper {
         console.log(`${decoded.uid} with session id ${decoded.sessionID} connected on port ${process.env.port}`);
 
         ws.on('message', (msg) => {
+            if(msg === "ping") {
+                this.trackExpiry(sessionID, decoded.uid);
+                return;
+            }
             try {
                 let m = JSON.parse(msg);
                 if (m.payload) {
@@ -140,13 +153,16 @@ const WS_MSG_TYPES = {
     DISCONNECT_USER: 2
 };
 
-redis_client.on("message", function (channel, msg) {
+redis_subscriber.on("message", function (channel, msg) {
     if (channel !== WS_CHANNEL) return;
     const message = JSON.parse(msg);
     switch (message.type) {
         case WS_MSG_TYPES.UNICAST: {
-            const session = wsWrapper.get(msg.to);
-            if (session) session.socket.send(JSON.stringify(message.payload));
+            const session = wsWrapper.get(message.toSessionID);
+            if (session) {
+                //console.log(`port ${process.env.port} handled the message sending ${msg}`);
+                session.socket.send(JSON.stringify(message.payload));
+            }
             break;
         }
         case WS_MSG_TYPES.BROADCAST: {

@@ -31,7 +31,7 @@ redlock.on('clientError', function (err) {
 const tryLock = async function (lockName, lockTimeout = 1000) {
     let lock;
     try {
-        lock = await redlock.lock(lockName, lockTimeout)
+        lock = await redlock.lock(lockName, lockTimeout);
     } catch (e) {
         console.log(e);
     }
