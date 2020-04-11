@@ -10,7 +10,7 @@ const verifyWSAuth = function (info, cb) {
             jwt.verify(token, TOKEN_SECRET, function (err, decoded) {
                 if (err) {
                     cb(false, 401, "Error verifying user session");
-                    console.log("Token verification failed");
+                    //console.log("Token verification failed");
                     //cb(true);
                 } else {
                     decoded.sessionID = uuidv4();

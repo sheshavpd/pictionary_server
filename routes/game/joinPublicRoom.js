@@ -1,12 +1,30 @@
-const {GameRoom} = require('../../models/GameRoom');
+const {GameRoom, ROOM_TYPE, getValidRoomUID} = require('../../models/GameRoom');
 const {Game, GAME_STATE, GAME_EVENTS} = require('../../models/Game');
 const User = require('../../models/User');
 const exitCurrentGames = require('../../ws_routes/game/exitCurrentGames');
 const {startGame, getGameState} = require('../../ws_routes/game');
-const Helpers = require("../../utils/Helpers");
 const {HTTPStatusCodes, MAX_PLAYERS_PER_ROOM} = require('../../AppConstants');
 const redisClient = require('../../credentials/redis_client');
 const {hmgetAsync} = require('../../credentials/redis_async');
+
+const newPublicRoom = async function(req, res) {
+    let gameRoom;
+    try {
+        gameRoom = new GameRoom({
+            hostUID: req.decoded.uid,
+            type: ROOM_TYPE.PUBLIC,
+            players: [],
+            roomID: await getValidRoomUID(),
+            audio: false
+        });
+        await gameRoom.save();
+    }catch(e){
+        console.log(e);
+        res.status(HTTPStatusCodes.INTERNAL_SV_ERROR).json({error: true, message: "DBError while creating new room"});
+        return;
+    }
+    return gameRoom;
+};
 
 const joinToRoom = async function (req, res, userData) {
     let currentSessionID;
@@ -21,18 +39,32 @@ const joinToRoom = async function (req, res, userData) {
         res.status(HTTPStatusCodes.BAD_REQUEST).json({error: true, message: "Please connect to server, and retry."});
         return;
     }
-    const gameRoom = await GameRoom.findOne({roomID: req.body.roomID});
+    const availableRooms = await GameRoom.aggregate(
+        [
+            {$match: {type: ROOM_TYPE.PUBLIC, $expr: {$lt: [{$size: "$players"}, MAX_PLAYERS_PER_ROOM]}, "players.0": {$exists: true}}},
+            {
+                $project: {
+                    _id: 1,
+                    players: 1,
+                    cGame: 1,
+                    audio: 1,
+                    length : {$size: "$players"}
+                }
+            },
+            {$sort: {length: 1}},
+            {$limit: 1}
+        ]
+    );
+    let gameRoom = availableRooms[0];
     if (!gameRoom) {
-        res.status(HTTPStatusCodes.BAD_REQUEST).json({error: true, message: "No game exists with that id."});
-        return;
-    }
-    if (gameRoom.players.length >= MAX_PLAYERS_PER_ROOM) {
-        res.status(HTTPStatusCodes.FORBIDDEN).json({error: true, message: `Game room full (${MAX_PLAYERS_PER_ROOM} players max).`});
-        return;
+        gameRoom = await newPublicRoom(req, res);
+        if(!gameRoom)
+            return;
     }
     gameRoom.players.unshift({sessionID: currentSessionID, uid: req.decoded.uid});
     try {
-        await gameRoom.save();
+        //Because gameRoom isn't a model object, and can't invoke .save() on it.
+        await GameRoom.updateOne({_id: gameRoom._id }, { players: gameRoom.players });
         userData.currentGames.push(gameRoom._id);
         await userData.save();
     } catch (e) {
@@ -71,11 +103,7 @@ const notifyUserJoin = async function (gameRoom, uid) {
     });
 };
 
-const joinPrivateRoom = async function (req, res) {
-    if (!Helpers.validateParamWithLength([req.body.roomID])) {
-        res.status(HTTPStatusCodes.BAD_REQUEST).json({error: true, message: "Invalid parameters."});
-        return;
-    }
+const joinPublicRoom = async function (req, res) {
     let userData;
     try {
         userData = await User.findOne({uid: req.decoded.uid});
@@ -94,4 +122,4 @@ const joinPrivateRoom = async function (req, res) {
     res.status(HTTPStatusCodes.OK).json({error: false, gameDetails});
 };
 
-module.exports = joinPrivateRoom;
+module.exports = joinPublicRoom;

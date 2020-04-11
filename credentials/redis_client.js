@@ -1,5 +1,6 @@
 const redis = require('redis');
-const client = redis.createClient(6379, "192.168.18.21");
+const { getRedisIP }  = require('../AppConstants');
+const client = redis.createClient(6379, getRedisIP());
 
 client.on('error', error=>{
     console.log("client",error);

@@ -1,8 +1,22 @@
-const randToken = require("rand-token");
-
+const APP_MODES = {
+  DEBUG: "DEBUG",
+  PRODUCTION: "PRODUCTION"
+};
+const CURRENT_APP_MODE = APP_MODES.DEBUG;
 const appConstants = {
-    TOKEN_SECRET: 'ABDDEFGHHJKL#!@#$!@#!@#$GHGHGFFFH88**99((88&&))PPLLKKkkLL77&&88*',
-    BCKND_VERSION_CODE: 1
+    TOKEN_SECRET: 'ABDDEFGHMJKL#!@#$!@#!@#$GHGHGFFFH88**99((88&&))PPLLKKkkLL77&&88*',
+    BCKND_VERSION_CODE: 1,
+    MAX_PLAYERS_PER_ROOM: 3,
+    REDIS_CLIENT_IP_DEBUG: "192.168.18.21",
+    REDIS_CLIENT_IP_PROD: "127.0.0.1",
+};
+
+const helperFunctions = {
+    getRedisIP: function(){
+        if(CURRENT_APP_MODE === APP_MODES.DEBUG)
+            return appConstants.REDIS_CLIENT_IP_DEBUG;
+        return appConstants.REDIS_CLIENT_IP_PROD;
+    }
 };
 
 const HTTPStatusCodes = {
@@ -15,5 +29,6 @@ const HTTPStatusCodes = {
 
 module.exports = {
     ...appConstants,
+    ...helperFunctions,
     HTTPStatusCodes
 };

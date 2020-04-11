@@ -65,6 +65,7 @@ class WSWrapper {
                             exitGameMsg(decoded, m.payload);
                             break;
                     }
+                    console.log(msg);
                 } else { //if message doesn't contain payload.
                     switch(m.type) {
                         case WebRTCEventTypes.OFFER:
@@ -80,8 +81,6 @@ class WSWrapper {
                 }
             } catch (e) {
             }
-            if(msg !== "ping")
-                console.log(msg);
         });
         ws.on('close', async (e) => {
             //console.log('The connection was closed!');

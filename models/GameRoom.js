@@ -28,6 +28,7 @@ const gameRoomSchema = new Schema({
 gameRoomSchema.index({roomID:1});
 gameRoomSchema.index({hostUID:1});
 gameRoomSchema.index({cGame:1});
+gameRoomSchema.index({type:1});
 gameRoomSchema.pre('save', function(next){
     if ( !this.time ) {
         this.time = new Date();
