@@ -78,13 +78,23 @@ const joinToRoom = async function (req, res, userData) {
         if (gameRoom.cGame) {
             game = await Game.findOne({_id: gameRoom.cGame});
             if (!game || game.state === GAME_STATE.ENDED)
-                startGame(gameRoom._id);
-        } else startGame(gameRoom._id);
+                scheduleNewGameAfterResponseIsSent(gameRoom._id);
+        } else scheduleNewGameAfterResponseIsSent(gameRoom._id);
     }
     notifyUserJoin(gameRoom, req.decoded.uid);
     const gameState = await getGameState(game, gameRoom);
     return {gameRoomID: gameRoom._id, audio: gameRoom.audio, ...gameState};
 };
+
+// TODO: Proper sequential scheduling of new game.
+// Currently 50ms delay is added to start game after the response is sent, as choosing_started was being sent before game joined response.
+const scheduleNewGameAfterResponseIsSent = function(gameRoomID) {
+    setTimeout(()=>{
+        startGame(gameRoomID);
+    }, 50);
+};
+
+
 
 const notifyUserJoin = async function (gameRoom, uid) {
     const user = await User.findOne({uid});

@@ -46,7 +46,7 @@ const getGameState = async function (game, gameRoom) {
     return gameState;
 };
 
-const NEW_GAME_TIMEOUT = 20000;
+const NEW_GAME_TIMEOUT = 10000;
 const endGame = async function (game, gameRoom) {
     if (!game || !gameRoom)
         return;
@@ -149,9 +149,13 @@ const guessWord = async function (locksArr, stateID, gameUID, {sessionID, uid, w
     const thisPlayer = gameRoom.players.filter(player => player.uid === uid)[0];
     const artistPlayer = gameRoom.players.filter(player => player.uid === game.artistID)[0];
     if (!thisPlayer || !artistPlayer) return;
-    if (numGuessers === 0) { //Only first guesser is rewarded.
+    if (numGuessers === 0) { //First guesser is rewarded 7 points
         thisPlayer.score += 7;
         guessers[uid].score = 7;
+    }
+    if (numGuessers === 1) { //Second guesser is rewarded 5 points
+        thisPlayer.score += 5;
+        guessers[uid].score = 5;
     }
     if (numGuessers < 2) { //artist rewarded twice
         artistPlayer.score += 7;

@@ -26,6 +26,11 @@ routes.use((req, res, next)=>{
   // Pass to next layer of middleware
   next();
 });
+routes.get('/', (req, res) => {
+    res.status(200).send("Are you enjoying pictionary? :)")
+});
+
+
 routes.use('/auth', auth);
 
 routes.use(function(req, res, next) {
@@ -61,9 +66,8 @@ routes.use(function(req, res, next) {
     }
 });
 routes.use('/game', game);
-
 routes.get('/', (req, res) => {
-  res.status(200).json({ message: 'Connected!' });
+    res.status(200).json({message: "connected!"});
 });
 
 module.exports = routes;

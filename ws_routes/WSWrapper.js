@@ -51,7 +51,7 @@ class WSWrapper {
             console.log(e);
             return;
         }
-        console.log(`${decoded.uid} with session id ${decoded.sessionID} connected on port ${process.env.port}`);
+        console.log(`${decoded.uid} with session id ${decoded.sessionID} connected on port ${process.env.PORT}`);
 
         ws.on('message', (msg) => {
             if(msg === "ping") {
@@ -78,7 +78,8 @@ class WSWrapper {
                             exitGameMsg(decoded, m.payload);
                             break;
                     }
-                    console.log(msg);
+                    if(m.type !== GAME_EVENTS.STROKE)
+                        console.log(msg);
                 } else { //if message doesn't contain payload.
                     switch(m.type) {
                         case WebRTCEventTypes.OFFER:
@@ -123,10 +124,7 @@ class WSWrapper {
             const existingSessionIDs = await hmgetAsync(redisClient)('sessions', uid);
             existingSessionIDs.forEach(existingSessionID => {
                 if (existingSessionID !== null) {
-                    //If destination socketSession exists in local node, send it here. Else, send to other nodes to checkup!
-                    if (this.socketSessions[existingSessionID])
-                        this.socketSessions[existingSessionID].socket.send(JSON.stringify(payload));
-                    else redis_publisher.publish(WS_CHANNEL, JSON.stringify({type: WS_MSG_TYPES.UNICAST, existingSessionID, payload}));
+                    this.sendMSG(existingSessionID, payload);
                 }
             });
         } catch (e) {
